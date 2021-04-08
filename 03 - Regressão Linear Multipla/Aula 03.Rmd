@@ -1,0 +1,122 @@
+---
+title: "Analise DEC Univariado"
+author: "Marcelo Azevedo Costa"
+date: "07/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura dos dados
+```{r leituraDados}
+ require(openxlsx)
+ dados <- read.xlsx("baseDEC_Compensacoes_CEMIG2018.xlsx")
+ dados <- dados[c(3:15)]
+```
+
+
+## Analises univariadas
+```{r analise02}
+ require(exploreR)
+ require(knitr)
+ saida <- masslm(dados, "lnDEC", ignore = c("Codigo","DSC_Conj_N"))
+ kable(saida, caption="Analise Univariada")
+```
+
+
+## Analise de correlacao
+```{r Correlacao}
+ require(corrplot)
+ corMat <- cor(dados)
+ corrplot(corMat, method = "ellipse", type = "upper", order = "AOE", diag=FALSE, addgrid.col=NA, outline=TRUE)
+```
+
+
+## Ajuste da correlação linear múltipla
+```{r ModeloMultipla}
+
+ dados$x1 <- rnorm(nrow(dados))
+ dados$x2 <- rnorm(nrow(dados))
+
+ modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS1 + DS2 + AR1 + umidade +      temperatura + Volume.chuva + x1 + x2, data = dados)
+  #summary(modelo) Assim retiramos x1 e Volume.chuva
+ 
+  modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS1 + DS2 + AR1 + umidade + temperatura + x2, data = dados)
+ #summary(modelo) Assim retiramos a temperatura
+ 
+  modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS1 + DS2 + AR1 + umidade + x2, data = dados)
+ #summary(modelo) Assim retiramos DS1
+ 
+  modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS2 + AR1 + umidade + x2, data = dados)
+ #summary(modelo) Assim retiramos x2 e chegamos nas melhores variáveis
+ 
+  modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS2 + AR1 + umidade, data = dados)
+ summary(modelo)
+```
+
+
+## Diagnostico de multicolinearidade
+```{r Multicolinearidade}
+ require(car)
+ modelo <- lm(lnDEC ~ AG1 + AE1 + AE2 + VC1 + DS1 + DS2 + AR1 + umidade + temperatura, data = dados)
+ summary(modelo)
+ 
+ 
+ ## Caso o VIF seja maior que 5 (ou maior que 10) há forte evidencia de multicolinearidade no modelo
+ vif(modelo)
+ 
+ 1 - 1/vif(modelo)
+ 
+ modeloVIF <- lm(VC1 ~ AG1 + AE1 + DS1 + DS2 + AR1 + umidade + temperatura, data = dados)
+ summary(modeloVIF)
+ 
+ # Com essa análise, percebemos que o VC1 tem uma forte ligação com as variáveis de umidade, temperatura e AG1.
+```
+
+
+## Seleção automática do modelo
+```{r FuncaoStep}
+ modelo <- lm(lnDEC ~ ., data = dados)
+ summary(modelo)
+ 
+ modelo <- step(modelo)
+ summary(modelo)
+ 
+ modelo <- lm(lnDEC ~ -1 + AG1 + AE1 + AE2 + DS2 + AR1 + Volume.chuva + temperatura, data = dados)
+ summary(modelo)
+```
+
+
+
+
+## Analise de resíduos
+```{r Analise residuos}
+ plot(modelo, lty=0, pch=19, col="blue")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

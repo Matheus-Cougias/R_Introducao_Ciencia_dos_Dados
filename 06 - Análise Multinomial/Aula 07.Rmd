@@ -1,0 +1,75 @@
+---
+title: "Regressao Multinomial"
+author: "Marcelo Azevedo Costa"
+date: "5 de setembro de 2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+
+## Leitura da base de dados
+Algumas modificações foram feitas para que a resolução do problema seja dada de forma um pouco mais didática, pois os produtos estavam representados como 1, 2 e 3, ao invés de A, B e c. Além disso, para possilitar uma nova opção de análise, foi acrescentada uma nova coluna que determina se o comprador é do sexo masculino (baseada na coluna pré-existente que já dizia se era do sexo feminino)
+```{r leitura}
+dados <- read.csv("mlogit.csv")
+dados$brand <- as.factor(dados$brand)
+levels(dados$brand) <- c("A", "B", "C")
+dados$male <- 1 - dados$female
+```
+
+## Análise exploratória
+Em relação à idade, percebe-se uma preferência pela marca C quanto maior for a idade do consumidor. E, em relação ao sexo, as mulheres possuem uma preferência pelo item B enquanto os homens possuem pelo item A.
+```{r analise}
+plot(age ~ brand, data=dados)
+plot(as.factor(female) ~ brand, data=dados)
+```
+
+## Ajuste do Modelo Multinomial
+Assim, o pacote carregado é o mlogit, mas para ser utilizado ele precisa reescrever o banco de dados na forma que ele melhor compreende. Basicamente ele utiliza a forma "wide" para o banco de dados, assim criando um novo banco de dados, que é uma forma de organização que multiplica a linha para todos os produtos possíveis, não somente captando a linha do produto comprado. Então por exemplo, caso uma pessoa comprou um vinho A, teremos três linhas, uma positiva para A e duas positivas para B e C.
+
+Além disso, temos que selecionar qual a variável resposta do problema com o passo choise, colocando nela qual a coluna será utilizada na análise.
+
+No passo em que utilizamos o modelo, podemos colocar tanto A, B ou C como a referência do problema, não alterando o resultado.
+
+Para interpretar o modelo gerado, a melhor maneira é utilizando os P-valores para detectar se as variáveis são ou não significativas para o modelo. Assim, ao invés de interpretarmos o modelo como um todo, faremos isso por partes.
+
+Como tomamos o A como valor de referência, os resultados gerados serão frutos da comparação entre as probabilidades do comportamento de determinada característica de acordo com o comportamento dela no produto A, dada por exp(Estimate).
+
+Assim, se analisarmos a variável de idade do consumidor, pelo fato do valor do Estimate de C ser o maior entre as variáveis (ou seja, se compararmos as comparações entre A e B junto com A e C) percebemos que quanto maior for a idade, maior será a probabilidade do consumidor comprar o vinho C.
+
+Se utilizarmos a variável do gênero feminino, percebemos que o Estimade do vinho B é o maior entre as marcas. Então podemos tomar esse vinho como a preferência do sexo feminino.
+```{r multinomial, warning=FALSE}
+ require(mlogit)
+ ## Coloca os dados no formato da funcao "mlogit"
+ mldata       <- mlogit.data(dados, choice="brand", shape="wide")
+ mlogit.model <- mlogit(brand ~ 1|female + age, data = mldata, reflevel="A")
+ summary(mlogit.model)
+```
+
+## Previsao do Modelo Multinomial
+Assim, para fazer a previsão de determinado indivíduo dadas suas características, replicamos o passo seguinte. Vale lembrar que replicamos 3 vezes os valores gerados para que sejam testadas as 3 marcas (A, B e C).
+```{r PredicaoProbabilidades}
+ saida <- predict(mlogit.model, 
+                  newdata=data.frame(female=rep(0, 3), 
+                                        age=rep(35, 3)))
+ print(saida)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

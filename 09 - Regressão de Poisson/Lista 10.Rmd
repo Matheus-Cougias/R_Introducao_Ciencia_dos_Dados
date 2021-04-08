@@ -1,0 +1,65 @@
+---
+title: "Lista 10"
+author: "Matheus Cougias e Klysman Rezende"
+date: "02/10/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#------------------QUESTÃO 01------------------------
+A análise exploratória do banco de dados já foi realizada na Lista 09, sendo assim, não será abordada nessa lista.
+
+A primeira regressão presente é realizada utilizando a variável Insured como população de referência. Dessa maneira, encontra-se um grande intervalo de Deviance, de -23.951 até 46.914, fazendo com que o modelo gerado não compreenda muito bem os dados de entrada. Nesse modelo, o cliente que possui a maior probabilidade de acionar seu seguro é composto pelas seguintes características: Kilometres na faixa de 1000~ 15000, residentes da área rural do sul do país, que utiliza o Tipo 9 de veículo, com alto nível de Bonus e com alto número de assegurados em sua região.
+
+Já na regressão em que tomamos o Insured como offset, temos uma diminuição da Deviance, com seu intervalo indo para -8.9411 e 9.4199, identificando que, em relação à primeira regressão realizada, essa compreende melhor os dados. Temos então que o perfil de cliente que maximiza a probabilidade de acionar seu seguro é dado pela quilometragem acima de 25000km, residentes da região de Estolcomo, que utilizam veículos do Tipo 5 e que possuem a menor faixa de Bonus possível (no caso, Bonus = 1). Dessa maneira, pelo fato do intervalo de Deviance ser menor quando utilizamos o Offset, esse modelo é mais recomendável que o inicial.
+```{r Questao01}
+#Leitura e modificação dos dados
+dados1 <- read.csv("motorins.dat", sep="")
+dados1$Kilometres <- factor(dados1$Kilometres)
+levels(dados1$Kilometres) <-  c("< 1000", "1000 ~ 15000", "15000 ~ 20000", "20000 ~ 25000", "> 25000")
+dados1$Zone <- factor(dados1$Zone)
+levels(dados1$Zone) <- c("Stockholm...", "Large cities", "Pequenas cidades do sul", "Area rural do sul", "Pequenas cidades do norte",
+                                   "Area rural do norte", "Gotland")
+dados1$Make <- factor(dados1$Make)
+levels(dados1$Make) <- c("Tipo 1", "Tipo 2", "Tipo 3", "Tipo 4", "Tipo 5", "Tipo 6", "Tipo 7", "Tipo 8", "Tipo 9")
+
+#Regressão sem Offset
+modelo1 <- glm(Claims ~ Insured + Kilometres + Zone +  Make +  Bonus, data = dados1, family = poisson)
+summary(modelo1)
+
+#Regressão com Offset
+modelo2 <- glm(Claims ~ offset(log(Insured)) + Kilometres + Zone +  Make +  Bonus, data = dados1, family = poisson)
+summary(modelo2)
+```
+
+
+
+
+
+
+#------------------QUESTÃO 02------------------------
+Pelo fato da análise da base de dados já ter sido realizada na Lista 08, não será abordada essa etapa no relatório. Desse modo, com objetivo de comparar o resultado gerado pelas Regressões Binomial e de Poisson, é importante relembrar a conclusão da Lista 08.
+
+Na utilização da Regressão Boniomial, o intevalo de Deviance foi dado entre -2.64532 e 1.85912. A combinação das variáveis que gera o maior número de casos é dada por pessoas da cidade de Fredericia com a faixa de idade entre 70 e 74 anos. Por outro lado, o perfil que gera o menor número de casos são pessoasl da cidade de Kolding com a idade entre 40 e 54 anos.
+
+Agora, a análise da atual lista é feita através de uma Regressão de Poisson, onde o intervalo de Deviance gerado foi de -2.63573 e 1.85267. Assim como na regressão anterior, o perfil que gera maior probabilidade de casos de câncer é dado por pessoas de Fredericia com idade entre 70 e 74 anos. Assim como no caso de maior probabilidade, a combinação que gera a menor probabilidade também é de pessoas entre 40 e 54 anos de idade que residem na cidade de Kolding.
+
+Dessa maneira, pode-se perceber que a base foi bem trabalhada tanto pela Regressão Binomial quanto pela Regressão de Poisson, pois em ambos os casos os valores da Deviance são extremamente próximos e pelos valores dos Estimates e P-valores também serem similares. Uma provável causa dessa similaridade nos resultados gerados se dá por ambas as Distribuições Binomial e de Poisson trabalharem sobre dados de probabilidade discreta, onde as tentavidas são independentes e a probabilidade de cada intervalo se mantém constante.
+```{r Questao02}
+#Leitura e modificação dos dados
+dados3 <- read.csv("danishlc.dat", sep="\t")
+dados3$Age <- factor(dados3$Age,
+                       levels = c("40-54", "55-59", "60-64", "65-69", "70-74", ">74"))
+dados3$City <- as.factor(dados3$City)
+
+#Regressão de Poisson
+modelo3 <- glm(Cases ~ offset(log(Pop)) + Age + City, data = dados3, family = poisson)
+summary(modelo2)
+
+```
+

@@ -1,0 +1,58 @@
+---
+title: "Aula 08"
+author: "Matheus Cougias e Klysman Rezende"
+date: "18/09/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura de dados
+```{r Leitura}
+dados <- read.csv("aviationdeaths.dat", sep="\t")
+dados$Age <- as.factor(dados$Age)
+```
+
+
+## Análise Exploratória
+Sabendo que a base de dados possui 4 variáveis, sendo o ano do acidente, o número daquele acidente, o número de mortes e a faixa etária dessas mortes.
+
+Ao observar o gráfico de boxplot entre as Idades e as Mortes, pode-se preceber que a faixa etária de 50-59 anos de idade é a faixa mais crítica, porém isso apresenta um erro do problema. Quando tomamos a faixa dos 80 anos, sabemos que poucos são os pilotos nessa idade, então a análise é errônea. Assim, seria melhor fazer uma análise das taxas brutas de mortes por pilotos. Dessa maneira, a partir do segundo gráfico, é possível observar que a faixa crítica é dada entre os 70-19 anos.
+
+Em relação aos anos, talvez exista uma sazonalidade, podendo perceber uma tendência de crescimento nos dois últimos anos do banco de dados.
+```{r Analise}
+#plot(Deaths ~ Age, data=dados)
+plot(Deaths/Numbers ~ Age, data=dados)
+#plot(Deaths ~ as.factor(Year), data=dados)
+plot(Deaths/Numbers ~ as.factor(Year), data=dados)
+```
+
+
+## Ajuste do Modelo
+Funciona bem similar à regressão logística, porém utilizaremos duas variáveis resposta para o problema, onde a  primeira é a variável resposta original do problema e a segunda representa os indivíduos que não entraram nessa variável, no caso os pilotos vivos.
+
+A interpretação do modelo encontrado é a mesma da utilizada no modelo logístico, utilizando a exponencial. No intercept foi utilizada a faixa de 0-19 anos, então se compararmos com a faixa de maior Estimate, que era de 70-79, percebemos que ela possui uma probabilidade 15x maior que da faixa de Intercept (exp(2.74)).
+
+Percebemos também uma possibilidade da faixa de 80 anos similar à encontrada na faixa 0-19, pois o banco de dados não pssuía informações o suficiente para afirmar isso. Assim é inválido afirmar qualquer coisa sobre essa faixa.
+
+Em relação aos anos (Year), se  utilizarmos a variável como numérica, o Estimate encontrado possui valor positivo, sendo assim, quando maior o ano, maior será a chance do piloto morrer em um acidente.
+
+Se tomarmos o ano como factor, percebemos p-valores extremamente altos, considerando que se dividirmos os anos em fatores, eles não possuirão um significado estatístico que podemos tirar conclusão.
+```{r Ajuste}
+modelo <- glm(cbind(Deaths, Numbers-Deaths) ~ Age + Year, data=dados, family=binomial)
+
+summary(modelo)
+```
+
+
+## Entendendo melhor o efeito do ano
+Criaremos um banco de dados agregando tanto o número de mortes quando o número total de pessoas em relação ao ano, para entender um pouco melhor essa relação da variável ano ser ou não considerada como um factor.
+
+O plot abaixo é uma simplifação do boxplot inicial, mostando a média de mortes a cada ano. Realmente é possível observar uma pequena tendência de crescimento através dos anos.
+```{r Entendendo}
+dados2 <- aggregate(cbind(Deaths, Numbers) ~ Year, FUN=sum, data = dados)
+
+plot(Deaths/Numbers ~ Year, data=dados2, pch=19, col="red")
+```

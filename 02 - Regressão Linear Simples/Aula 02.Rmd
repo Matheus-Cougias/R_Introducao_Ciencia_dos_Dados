@@ -1,0 +1,36 @@
+---
+title: "Analise DEC Univariado"
+author: "Marcelo Azevedo Costa"
+date: "07/08/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura dos dados
+```{r leituraDados}
+ require(openxlsx)
+ dados <- read.xlsx("baseDEC_Compensacoes_CEMIG2018.xlsx")
+```
+
+## Analise Exploratoria
+```{r analise01}
+ plot(lnDEC ~ AE1, data=dados, pch=19, col="blue")
+
+ modelo <- lm(lnDEC ~ AE1, data=dados)
+ summary(modelo)
+ abline(modelo, col="red", lty=2)
+
+```
+
+## Analises univariadas
+```{r analise02}
+ require(exploreR)
+ saida <- masslm(dados, "lnDEC", ignore = c("Codigo","DSC_Conj_N"))
+
+```
+
+
+

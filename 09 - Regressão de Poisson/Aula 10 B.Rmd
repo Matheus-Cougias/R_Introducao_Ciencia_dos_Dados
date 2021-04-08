@@ -1,0 +1,75 @@
+---
+title: "Aula 10 B"
+author: "Matheus Cougias e Klysman Rezende"
+date: "02/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Leitura dos dados
+```{r Leitura}
+dados <- read.csv("motorins.dat", sep="")
+
+dados$Kilometres <- factor(dados$Kilometres)
+levels(dados$Kilometres) <-  c("< 1000", "1000 ~ 15000", "15000 ~ 20000", "20000 ~ 25000", "> 25000")
+
+dados$Zone <- factor(dados$Zone)
+levels(dados$Zone) <- c("Stockholm...", "Large cities", "Pequenas cidades do sul", "Area rural do sul", "Pequenas cidades do norte",
+                                   "Area rural do norte", "Gotland")
+
+dados$Make <- factor(dados$Make)
+levels(dados$Make) <- c("Tipo 1", "Tipo 2", "Tipo 3", "Tipo 4", "Tipo 5", "Tipo 6", "Tipo 7", "Tipo 8", "Tipo 9")
+```
+
+
+##Modelo de Regressão 1
+Como desconsideramos a população de referência do problema, a Poisson seria muito restrita para realizar uma aderência sobre os dados, o que pode ser percebida de acordo com o valor dado pela Deviance Residual. Dessa maneira, utilizamos o offset para que o valor da Deviance sofra uma redução expressiva, possibilitanto a análise dos efeitos das variáveis. Assim, em relação às variáveis temos as seguintes conclusões:
+-> Kilometres: tomado no Intercept, o intervalo abaixo de 1000km é o que apresenta a maior redução do número esperado de reclamos, enquanto o intervalo acima de 25000km é o intervalo que aumenta o número de reclamos realizados;
+-> Zone: a zona tomada no Intercept (Estolcomo) é a que possui maior taxa reclamos e a zona Rural do Sul é a que minimiza essa taxa;
+-> Make: segundo o valor de Estimate, o Tipo 2 de veículo é o que apresentará a maior probabilidade de reclamos, enquanto o Tipo 4 apresenta a menor probabilidade;
+-> Bonus: pelo fato do Bonus ser uma variável numérica, pelo fato de seu valor de Estimate estar negativo, quanto menos a taxa de Bonus, maior a probabilidade do cliente acionar o seguro. Por outro lado, quanto maior for o valor do Bonus do cliente, menos será a probabilidade.
+```{r}
+modelo <- glm(Claims ~ offset(log(Insured)) + Kilometres + Zone +  Make +  Bonus, data = dados, family = poisson)
+summary(modelo)
+```
+
+
+##Modelo de Regressão 2
+Agora um modelo que realiza um ajuste a Super-dispersão (utilizando uma Binomial Negativa) é apresentado.
+```{r}
+require(MASS)
+modelo <- glm.nb(Claims ~ offset(log(Insured)) + Kilometres + Zone +  Make +  Bonus, data = dados)
+summary(modelo)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

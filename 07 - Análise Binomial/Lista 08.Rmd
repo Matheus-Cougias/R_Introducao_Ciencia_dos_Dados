@@ -1,0 +1,67 @@
+---
+title: "Lista 08"
+author: "Matheus Cougias e Klysman Rezende"
+date: "19/09/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura de dados
+Realiza a leitura do banco de dados, transformando em fatores as variáveis Age e City. Para facilitar a futura análise, foi adicionada duas novas variáveis, Prop e Dif, que é a proporção de casos em relação à população total e a quantidade de pressoas que não tiveram câncer. Além disso foi definida a ordem correta das faixas etárias, sendo que se não definida, a faixa de >74 seria a primeira apresentada nos gráficos.
+```{r Leitura}
+dados <- read.csv("danishlc.dat", sep="\t")
+dados$Age <- factor(dados$Age,
+                       levels = c("40-54", "55-59", "60-64", "65-69", "70-74", ">74"))
+dados$City <- as.factor(dados$City)
+dados$Prop <- dados$Cases/dados$Pop
+dados$Diff <- dados$Pop-dados$Cases
+```
+
+
+## Análise Exploratória
+O banco de dados, que possui 4 variáveis presentes: Cases (número de casos), Pop (população total), Age (faixa de idade) e City (cidade). A faixas de idade estão divididas em: 40-54, 55-59, 60-64, 65-69, 70-74 e >74, enquanto foram registrados dados de quatro cidades: Fredericia, Horsens, Kolding e Vejle.
+
+Analisando a relação entre a proporção de casos em relação à idade das pessoas, percebe-se uma tendência de crescimento dessa proporção desde a faixa inicial (40-54) até a penúltima faixa (70-74), porém o valor médio da faixa de idade mais avançada sofre um decaimento. Inclusive, essa faixa de >74 apresenta maior variação de possíveis valores de proporção, indo desde ≅ 0.5% até ≅ 2.0%.
+
+Em relação às cidades analizadas, a que possui a maior média da probabilidade de casos é a de Fredericia, encontrando-se um pouco acima de 1.5%, enquanto a cidade que possui a maior faixa de probabilidade é a de Vejle, indo desde abaixo dos 0.5% até acima dos 2%.
+```{r Analise}
+plot(Prop ~ Age, data=dados)
+plot(Prop ~ City, data=dados)
+```
+
+
+## Ajuste do Modelo SEM ITERAÇÃO
+Assim, a partir da análise exploratória tem-se a ideia de que a faixa de idade com maior probabilidade média de casos é entre 70 e 74 anos, enquando a cidade com a maior probabilidade é a de Fredericia. Para conferir a veracidade dessa ideia, uma regressão binomial será realizada sobre o banco de dados.
+
+Na regressão, a cidade tomada como Intercept foi a de Fredericia. Ao analisarmos os dados gerados em relação às cidades, percebemos que os p-valores apresentados são um pouco altos (exceto o de Kolding), que provavelmente foram gerados pelo baixo número de observações presentes no banco de dados. Analisando o valor do Estimate, temos as seguintes probabilidades para as cidades:
+-> Horsens = 1.39 vezes menor que Fredericia;
+-> Kolding = 1.45 vezes menor que Fredericia;
+-> Vejle = 1.31 vezes menor que Fredericia.
+
+A segunda análise que podemos tirar da regressão é em relação as faixas etárias. A faixa tomada como Intercept nesse caso foi de 40-54 anos de idade, e em relação a ela temos as seguintes probabilidades:
+-> 55-59 = 3.02 vezes maior que a faixa de 40-54;
+-> 60-64 = 4.61 vezes maior que a faixa de 40-54;
+-> 65-69 = 5.94 vezes maior que a faixa de 40-54;
+-> 70-74 = 6.50 vezes maior que a faixa de 40-54;
+-> >74 = 4.17 vezes maior que a faixa de 40-54;
+
+Dessa maneira, a ideia inicial de que a combinação entre a cidade de Fredericia e a faixa etária de 70-74 anos de idade seria a combinação com a maior probabilidade de detecção de câncer é comprovada com os resultados da análise do modelo de regressão.
+
+Por outro lado, podemos também realizar a combinação de variáveis que possui a menor probabilidade de câncer, sendo ela a de pessoas na faixa de 40-54 anos e residentes da cidade de Kolding.
+```{r Modelo1}
+modelo <- glm(cbind(Cases, Diff) ~ Age + City, data = dados, family = binomial)
+summary(modelo)
+```
+
+ 
+## Ajuste do Modelo COM ITERAÇÃO
+Ao tentar gerar um modelo onde calcula-se as probabilidades a partir da iteração entre as variáveis Age e City, novamente, provavelmente causada pelo baixo número de observações, os dados são inconclusivos devido aos p-valores apresentads serem altos demais para tomarmos como verdadeiros. Ainda assim, se obersarmos somente o valor do Estimate temos que a combinação entre Fredericia e a faixa de 70-74 anos é a segunda maior gerada, sendo 1.93 vezes maior que o Intercept. Nessa análise a combinação com maior probabilidade gerada foi entre a cidade de Vejle e a faixa etária 65-69, dada como 1.98 vezes maior que o Intercept.
+```{r Modelo2}
+modelo2 <- glm(cbind(Cases, Diff) ~ Age:City, data = dados, family = binomial)
+summary(modelo2)
+```

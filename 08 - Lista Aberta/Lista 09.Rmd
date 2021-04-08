@@ -1,0 +1,77 @@
+---
+title: "Lista 09"
+author: "Matheus Cougias e Klysman Rezende"
+date: "25/09/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Leitura de Dados
+Realiza a leitura da base de dados motorins.dat, selecionando somente as variáveis desejadas para análise (excluindo a sétima variável de Payment). Dessa maneira, as variáveis consideradas como factor são transformadas e trocou-se seus valores para o significado real daquela variável para melhor compreender os resultados gerados. Para facilitar a análise futura, serão criadas duas variáveis, uma da quantidade de clientes que não acionaram o seguro (total de clientes - número de reclamos) e da proporção de reclamos por clientes totais.
+```{r Leitura}
+dados <- read.csv("motorins.dat", sep="\t")
+dados <- subset(dados, select = -c(7))
+
+dados$Kilometres <- factor(dados$Kilometres)
+levels(dados$Kilometres) <-  c("< 1000", "1000 ~ 15000", "15000 ~ 20000", "20000 ~ 25000", "> 25000")
+
+dados$Zone <- factor(dados$Zone)
+levels(dados$Zone) <- c("Stockholm...", "Large cities", "Pequenas cidades do sul", "Area rural do sul", "Pequenas cidades do norte",
+                                   "Area rural do norte", "Gotland")
+
+dados$Make <- factor(dados$Make)
+levels(dados$Make) <- c("Tipo 1", "Tipo 2", "Tipo 3", "Tipo 4", "Tipo 5", "Tipo 6", "Tipo 7", "Tipo 8", "Tipo 9")
+
+dados$Bonus <- as.factor(dados$Bonus)
+
+dados$Prop <- dados$Claims/dados$Insured
+```
+
+
+
+## Análise Exploratória
+A partir da análise dos gráficos, pode-se transformar a variável numérica Bonus em uma variável de factor, pois os valores apresentados são números inteiros no intervalo de 1 a 7 anos, sendo assim, foi feita a alteração na parte anterior do código para melhor visualização dos dados.
+
+A partir do primeiro gráfico plotado (historgama das reclamos), é possível identificar que a  o baixo número de reclamos é a principal faixa no banco de dados. Pelo fato do número de clientes ser diferente em cada uma das linhas do banco de dados, também é interessante a análise em relação à proporção de reclamos em relação ao número total de clientes para cada amostra coletada. Assim como no primeiro gráfico, o segundo gráfico (histograma das proporções) também demonstra que as faixas de baixo índice de reclamos são predominantes na base de dados. Ambos os gráficos apresentam um comportamento que pode ser levado como uma distribuição exponencial.
+
+Causados pelo comportamento dos histograma aspresentados, os demais gráficos de análise do comportamento das variáveis preditoras e a variável de interesse possuem seus 3 primeiros quantis nas faixas mais baixas de valor. Resta então realizar uma análise de quais grupos se encontram um pouco destoados dos demais.
+
+Em relação à variável Kilometres, dois intervalos se destacaram com uma maior quantidade de pontos de alto valor em seu quarto quantil: os carros com rodagem entre 15000 e 20000km e os carros com rodagem acima dos 25000km. Uma provável explicação para o resultado gerado é o fato de veículos com uma maior rodagem são os que possuem maior desgaste de seus componentes, aumentando as probabilidades de ocorrência de um defeito (ou avaria) que levará ao acionamento do seguro por parte do assegurado.
+
+Quanto tomamos a comparação da proporção de acionamento com as Zonas do país, a Zona 7 (Gotland) se destacou com a maior quantidade de altos valores acima do terceito quantil. Por outro lado, a Zona 1 (Estolcomo) apresentou a maior média em comparação com as demais zonas, apesar de não estar muito acima delas.
+
+Ao analisar a variável Bonus, tem-se que a maior variação de valores de reclamos ,juntamente com a maior média, é dada pelos clientes que estão na primeira categoria (Bonus 1). Esta faixa é composta pelos novos clientes da seguradora e aqueles que, no último ano, realizaram um acionamento da mesma. Essa característica consegue explicar o motivo pelo grupo apresentar uma maior média, pois os novos clientes (provavelmente inexperientes) encontram-se no grupo, juntamente com os que realizam reclamos recorrentes.
+
+Sobre os valores apresentados pela variável Make, os tipos 5, 7 e 8 de veículos são os que apresentam as maiores médias de propabilidade de reclamos. O tipo 7 também se descata por possuir os maiores valores no quarto quantil do gráfico.
+
+No caso do último gráfico, foi utilizada a comparação entre a variável resposta Claims e a variável preditora Insured. O gráfico nos mostra que, quanto maior a quantidade de clientes assegurados, maior tende a ser a quantidade de reclamos realizados.
+```{r AnaliseExploratoria}
+hist(dados$Claims, main = "Histograma de Claims", ylab = "Frequência", xlab = "Claims", breaks = 50)
+hist(dados$Prop, main = "Histograma de Prop", ylab = "Frequência", xlab = "Proporção", breaks = 50)
+plot(Prop ~ Kilometres, data=dados, main = "Prop x Kilometres")
+plot(Prop ~ Zone, data=dados, main = "Prop x Zone")
+plot(Prop ~ Bonus, data=dados, main = "Bonus x Prop")
+plot(Prop ~ Make, data=dados, main = "Prop x Make")
+plot(Insured ~ Claims, data=dados, main = "Claims x Insured")
+```
+
+
+## Regressão Linear Simples
+Ao analisarmos o modelo da Regressão Linear Simples, apesra do R2 apresentado pelo modelo ser de 87.32%, tanto o gráfico de Residuals vs Fitted quanto o de Normal Q-Q demonstram que o modelo não compreende bem os dados, existindo diversos pontos fora da curva desejada. Por questão de espaço, os gráficos foram retirados e deixados em forma de comentário. Se tomarmos como verdadeiro o resultado da regressão, temos a seguinte combinação de clientes para que o número de reclamos seja maior que os demais:
+-> Clientes que a variável Kilometres está entre 1000 ~ 15000 km;
+-> Clientes da Zona de Estolcomo;
+-> Clientes na primeira faixa de bônus;
+-> Clientes com veiculo do tipo 9;
+-> Clientes presentes nas áreas com maior quantidade de clientes assegurados.
+```{r Simples}
+modeloRLN <- lm(Prop ~ Kilometres + Zone + Bonus + Make + Insured, data = dados)
+summary(modeloRLN)
+plot(modeloRLN)
+```

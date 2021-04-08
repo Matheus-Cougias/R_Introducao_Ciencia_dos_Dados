@@ -1,0 +1,52 @@
+---
+title: "Aula 10"
+author: "Matheus Cougias e Klysman Rezende"
+date: "02/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Leitura dos dados
+Realiza a leitura do arquivo .csv que possui duas variáveis: "age" e "children". O estudo realizado nos dirá a relação entre o número de filhos com a idade de mulheres.
+```{r leitura}
+dados <- read.csv('Birth.csv')
+```
+
+##Análise Exploratória
+```{r Analise}
+plot(children ~ age, data = dados, col = 'blue', pch = 1, ylim = c(0,9))
+```
+
+##Regressão de Poisson
+O resultado gerado pelo modelo de Poisson nos mostra que, para cada idade acrescentada, a probabilidade de ter um filho aumenta em exp(0.11295). Por exemplo, uma mulher com 30 anos de idade possui a probabilidade de ter exp(-4.08955 + 0.11295*30) = 0.4960 filhos. Assim, temos que quanto mais nova for a mulher, menos será a probabilidade dela ter filhos.
+```{r Regressao}
+modelo <- glm(children ~ age, family = poisson, data = dados)
+summary(modelo)
+```
+
+##Predição
+Se analisarmos a predição, através da regressão de poisson podemos encontrar os limites inferiores e superiores para cada uma das idade do banco de dados, de modo que a confiabilidade dos dados seja de 95%. Os limites inferiores determinados pelo modelo são todos de 0 filhos, independente das idades. Por outro lado, a linhda que representa o número máximo de filhos cresce de acordo com o avanço da idade da mulher.
+
+Se quisermos analisar qual o pior caso presente no banco de dados, podemos realizar a leitura do Deviance e do Pearson do modelo gerado, dessa maneira, colocando esses resultados em ordem decrescente, o maior valor é o que representa o pior resultado. Nesse caso, uma mulher com 26 anos de idade com 3 filhos é o pior caso dentro do banco de dados.
+
+Por outro lado, podemos observar os valores que estão abaixo da média, colocando os valores em ordem crescente. O valor mais negativo também representa um dado que está se distanciando da média esperada.
+```{r Predicao}
+
+dados$Deviance <- residuals(modelo, type='deviance')
+dados$Pearson <- residuals(modelo, type='pearson')
+
+dt <- data.frame(age = seq(16, 45, length=100))
+dt$fit <- predict(modelo, newdata = dt, type='response')
+plot(children ~ age, data = dados, col = 'blue', pch = 1, ylim = c(0,9))
+lines(fit ~ age, lwd = 1, col = 'black', data = dt)
+
+dt$Inferior <- qpois(p = 0.025, lambda = dt$fit)
+dt$Superior <- qpois(p = 0.975, lambda = dt$fit)
+
+lines(Inferior ~ age, lwd = 1, col = 'green', data = dt)
+lines(Superior ~ age, lwd = 1, col = 'red', data = dt)
+```
+

@@ -1,0 +1,210 @@
+---
+title: "Base de Dados Boston"
+author: "Marcelo Azevedo Costa"
+date: "21/08/2020"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Leitura e processamento dos dados
+
+```{r leituraDados}
+ require(googleVis)
+ # A leitura dos dados foi feita através do .delim, pulando as 11 primeiras linhas de modo que somente a parte dos dados seja lida.
+ dados <- read.delim("boston_corrected.txt", skip = 11)
+ 
+ # Faz a retirada dos NAs dos dados puxados
+ dados <- na.omit(dados)
+
+ # Para que o googleVis funcione corretamente, ele pede para que utilizemos duas outras colunas não presentes no arquivo, a de número da observação e uma que representa o ano quando foram feitas (por padrão, todas foram colocadas em 2020)
+ dados$id    <- 1:nrow(dados)
+ dados$tempo <- rep(2020, nrow(dados))
+ 
+ # Assim, os dados são plotados através do googleVis, que facilita a análise, pois pelo navegador ele possibilita modificarmos e compararmos as variáveis do modo que desejamos, sendo muito mais fácil que montar um gráfico para comparar cada par de variáveis. Assim como a comparação das variáveis é possibilitada, também podemos identificar qual escala gera melhores resultados de comparação.
+ saida <- gvisMotionChart(dados, idvar="id", timevar="tempo")
+ plot(saida)
+
+ # Como algumas das variáveis não seriam usadas na análise do problema, selecionamos também quais das colunas são de nosso interesse.
+ dados <- dados[,c(7,9:21)]
+```
+
+## Analise exploratoria dos dados
+
+```{r AnaliseExploratoria}
+# Agora serão utilizados três pacotes, onde o exploreR realiza os testes de regressão linear simples, retornando uma tabela com todas os p-valores e erros quadráticos entre a variável respostas e as variáveis de interesse.
+ require(packHV)
+ require(exploreR)
+ require(corrplot)
+
+ # O primeiro gráfico que montamos é o histograma dos intervalos de valores do MEDV, que tem uma distribuição assimétrica, com uma cauda pesada que representa alguns imóveis com preços mais elevados. 
+ hist_boxplot(dados$MEDV, main="", xlab="MEDV", col="light blue")
+ rug(dados$MEDV)
+ 
+ # Para entender se a correlação entre uma variável de interesse e a variável resposta deve ser feita com ou sem escala logaritmica, pode-se testar imprimir a correlação entre elas aplicando ou não a escala. A que apresentar o melhor resultado é a que devemos utilizar, como neste caso foi o log.
+ cor(dados$MEDV, log(dados$LSTAT))
+
+ # Assim, para analisarmos inicialmente as correlações das variáveis, podemos montar um gráfico de correlação entre elas, com o pacote corrplot. Através do gráfico, podemos perceber que existe uma colinearidade entre algumas das variáveis, enquanto outras possuem uma correlação que exisgem uma transformação. O método utilizado foi o spearman, pois ele consegue assimilar melhor as variáveis que deveriam estar na escala log.
+ corMat <- cor(dados, method="spearman")
+ corrplot(corMat, method = "ellipse", type="upper", order="AOE", 
+          diag=FALSE, addgrid.col=NA, outline=TRUE)
+ 
+ # Outra opção é analisar cada diagrama para identificar que a normal atende às necessidades da correlação entre a variável resposta e as variáveis de interesse. Isso possibilita que entendamos também quais dessas vereão ser repassadas para outra escala.
+ plot(MEDV ~ CRIM, data=dados, pch=19, col="blue")
+ plot(MEDV ~ ZN, data=dados, pch=19, col="blue")
+ plot(MEDV ~ INDUS, data=dados, pch=19, col="blue")
+ plot(MEDV ~ CHAS, data=dados, pch=19, col="blue")
+ plot(MEDV ~ NOX, data=dados, pch=19, col="blue")
+ plot(MEDV ~ RM, data=dados, pch=19, col="blue")
+ plot(MEDV ~ AGE, data=dados, pch=19, col="blue")
+ plot(MEDV ~ DIS, data=dados, pch=19, col="blue")
+ plot(MEDV ~ RAD, data=dados, pch=19, col="blue")
+ plot(MEDV ~ TAX, data=dados, pch=19, col="blue")
+ plot(MEDV ~ PTRATIO, data=dados, pch=19, col="blue")
+ plot(MEDV ~ B, data=dados, pch=19, col="blue")
+ plot(MEDV ~ LSTAT, data=dados, pch=19, col="blue")
+ 
+ # Outra opção é criar um banco de dados novo, acrescentando novas colunas que anexarão o logaritmo das colunas originais. Vale a pena lembrar que como algumas variáveis possuem valor ZERO, elas devem ser transformadas acrescidas de uma unidade.
+ dados$logCRIM    <- log(dados$CRIM)
+ dados$logZN      <- log(dados$ZN + 1)
+ dados$logINDUS   <- log(dados$INDUS)
+ dados$logCHAS    <- log(dados$CHAS + 1)
+ dados$logNOX     <- log(dados$NOX)
+ dados$logRM      <- log(dados$RM)
+ dados$logAGE     <- log(dados$AGE)
+ dados$logDIS     <- log(dados$DIS)
+ dados$logRAD     <- log(dados$RAD)
+ dados$logTAX     <- log(dados$TAX)
+ dados$logPTRATIO <- log(dados$PTRATIO)
+ dados$logB       <- log(dados$B)
+ dados$logLSTAT   <- log(dados$LSTAT)
+ 
+ # Dessa maneira, para cada uma das variáveis preditoras será feita a análise univariada, facilitando o descobrimento de qual deverá ser trabalhada em log, e quais possuem maior significância sobre os valores do MEDV.
+ saida <- masslm(dados, "MEDV")
+ saida <- saida[order(saida$R.squared, decreasing=TRUE),]
+```
+
+## Ajuste do Modelo de Regressão Múltipla
+
+```{r RegressaoMultipla}
+ require(car)
+
+ # Para ter uma referência, utilizaremos um modelo sem transformação logarítmica alguma, pois utilizando todo o banco de dados temos problema no cálculo do VIF. 
+ modelo <- lm(MEDV ~ CRIM + ZN + INDUS + CHAS + NOX + RM + 
+              AGE + DIS + RAD + TAX + PTRATIO + B + LSTAT, data=dados)
+ summary(modelo)
+ vif(modelo)
+ 
+ # O plot do modelo nos possibilita estudar um pouco mais profundamente os resíduos gerados das correlações acima. A primeira e principal falha do modelo é percebida no primeiro gráfico, onde não há uma linearidade dos dados, mas sim um formato de curva representando o comportamento. No segundo gráfico também podemos perceber que os dados não seguem a distribuição normal.
+ plot(modelo)
+ 
+
+  # Por outro lado, podemos analizar também os resíduos do modelo onde utilizamos tanto a variável quanto o log dela. A não lineradidade dos dados pode ser percebida, porém o gráfico ainda continua com uma cauda mais pesada.
+ modelo <- lm(MEDV ~ ., data=dados)
+ summary(modelo)
+ plot(modelo)
+ 
+ # Outro modo de analisarmos o modelo é utilizando o histograma, que comprova os nossos gráficos anteriores onde existe uma pequena cauda à direita do gráfico. Quanto fazemos o teste de normalidade dos dados, percebemos que o p-valor é extremamente baixo, indicando uma falha no modelo por ele ter erros numa distribuição normal.
+ hist_boxplot(residuals(modelo))
+ shapiro.test(residuals(modelo))
+ 
+ 
+ # Outra boa opção é fazer a seleção automática das variáveis para que o resultado de modelo final tenha boas variáveis, montando a combinação ótima das variáveis e seus logaritmos. A partir desse novo modelo, percebemos ainda uma pequena não linearidade e a presença da cauda nos erros.
+ modelo <- step(modelo)
+ summary(modelo)
+ plot(modelo)
+```
+
+## Capacidade Preditiva do Modelo
+```{r Preditiva}
+ # Em muitos casos não buscamos somente estudar sobre a capacidade o modelo em compreender os dados apresentados, mas também podemos buscar sua capacidade em prever quais seria uma continuação do modelo. Primeiramente o código abaixo toma a variável resposta e cria um novo vetor completo de NAs, do tamanho da observação (506).
+ y    <- dados$MEDV
+ yhat <- rep(NA, nrow(dados))
+
+ # Assim, uma regressão linear é feita, onde a cada laço é retirada uma linha do modelo e então testamos se o valor de predição daquela amostra é ou não similar ao valor original.
+ for(cont in 1:nrow(dados)){
+   modelo <- lm(MEDV ~ CRIM + INDUS + CHAS + NOX + RM + PTRATIO + B + logCRIM + logINDUS + logRM + logDIS + logRAD + logTAX + logPTRATIO + logLSTAT, data=dados[-cont,])
+   
+   yhat[cont] <- predict(modelo, newdata=dados[cont,])
+ }
+ 
+ # Caso o modelo achado estivesse com alto índice de acerto, preticamente todos os dados estimados seriam iguais aos dados retirados da tabela original. 
+ plot(yhat ~ y, pch=19, col="blue")
+ abline(a=0, b=1, lwd=2, col="red")
+ 
+ R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )
+ 
+ ## Analise dos residuos
+ modelo <- lm(MEDV ~ CRIM + INDUS + CHAS + NOX + RM + PTRATIO + B + logCRIM + logINDUS + logRM + logDIS + logRAD + logTAX + logPTRATIO + logLSTAT, data=dados)
+ summary(modelo)
+ plot(modelo)
+ 
+ shapiro.test(residuals(modelo))
+ hist_boxplot(residuals(modelo))
+ 
+ 
+ 
+```
+
+## Arvores de Regressao
+```{r CART}
+ require(rpart)
+ require(rpart.plot)
+
+ #x <- seq(-1, +1, length=100)
+ #y <- 0.5 + 1.5 * x + rnorm(length(x), sd=0.5)
+ #plot(y ~ x)
+ #ndados <- data.frame(x=x, y=y)
+ 
+ #modelo <- rpart(y~x, data=dados) 
+ # control = rpart.control(maxdepth=2)
+ 
+ #rpart.plot(modelo) #
+ #plot(y~x, pch=19, col="blue")
+ #lines(predict(modelo) ~ ndados$x, col="red", lwd=2)
+
+
+ 
+ # No caso as árvores, não dividimos o banco de dados e também não aplicamos transformações às variáveis do modelo. Assim, uma árvore é montada gerando os possíveis caminhos que levam a determinadas faixas de valores, levando em conta os valores apresentados pelas variáveis consideradas pelo modelo como as que mais influenciam essa variação do MEDV.
+ modelo <- rpart(MEDV ~ CRIM + ZN + INDUS + CHAS + NOX + RM + 
+              AGE + DIS + RAD + TAX + PTRATIO + B + LSTAT, data=dados)
+ 
+ rpart.plot(modelo)
+ 
+ residuos <- residuals(modelo)
+ shapiro.test(residuos)
+
+ 
+ # Para calcularmos o r² preditivo do modelo de árvore, basicamente realizamos as mesmas etapas do modelo anterior (da regressão linear simples). Essa etapa nos gera a validação cruzada da nossa solução. Outra boa opção que temos para melhor analisarmos o problema é em variar o número de camadas na árvore através do comando maxdepth, para assim encontrarmos qual a quantidade de ramos que otimiza nosso resultado de r² preditivo.
+ y    <- dados$MEDV
+ yhat <- rep(NA, nrow(dados))
+
+ for(cont in 1:nrow(dados)){
+   modelo <- rpart(MEDV ~ CRIM + ZN + INDUS + CHAS + NOX + RM + 
+              AGE + DIS + RAD + TAX + PTRATIO + B + LSTAT, data=dados[-cont,],
+              control = rpart.control(maxdepth=5))
+   
+   yhat[cont] <- predict(modelo, newdata=dados[cont,])
+ }
+ 
+ plot(yhat ~ y, pch=19, col="blue")
+ abline(a=0, b=1, lwd=2, col="red")
+ 
+ (R2pred <- 1 - sum( (y-yhat)^2 )/sum( (y-mean(y))^2 )) 
+```
+
+
+
+
+
+
+
+
+
+
+
+
